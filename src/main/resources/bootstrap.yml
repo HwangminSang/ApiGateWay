@@ -1,0 +1,8 @@
+spring:
+  cloud:
+    config:
+      uri: http://127.0.0.1:8888  #클라우드 컨피그 서버 주소
+      name: ecommerce # 파일명
+
+#  profiles:
+#    active: dev  # -prod으로 설정하고 user-service에는 dev로 할경우 서로 읽어오는게 다르기떄문에 401오류발생   / r그래서 dev

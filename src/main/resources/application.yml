@@ -1,0 +1,141 @@
+server:
+  port: 8002
+  #false : not regist / true : regist
+eureka:
+  client:
+    service-url:
+      defalutZone: http://localhost:8761/eureka
+    register-with-eureka: true
+    fetch-registry: true
+
+
+spring:
+  application:
+    name: apigateway-service
+  #레비엠큐에 등록
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+
+  #netty
+  #
+  cloud:
+    gateway:
+      #cors설정
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3001"
+            allow-credentials: true   #추가
+            allowedHeaders:
+              - x-requested-with
+              - authorization
+              - content-type
+              - credential
+              - X-AUTH-TOKEN
+              - X-CSRF-TOKEN
+            allowedMethods:
+              - POST
+              - GET
+              - PUT
+              - OPTIONS
+              - DELETE
+      #글로버 필터 등록
+      default-filters:
+        - name: GlobalFilter
+          args:
+            baseMessage: Spring Cloud Gatewau Global Filter
+            preLogger: true
+            postLogger: true
+
+      routes:
+        #로그인
+        - id: user-service
+          uri: lb://USER-SERVICE  #eureka서버에 등록된이름 찾아간다  lb
+          predicates:
+            - Path=/user-service/login
+            - Method=POST
+          filters:
+            - RemoveRequestHeader=Cookie # 헤더값 초기화
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment} #/user-service/(?<segment>.*) 이렇게 들어오면  /$\{segment} 바꾸겠다는 뜻
+            #/user-service/ 요청을 제외 할수있게된다.
+
+        #회원가입
+        - id: user-service
+          uri: lb://USER-SERVICE  #eureka서버에 등록된이름 찾아간다  lb
+          predicates:
+            - Path=/user-service/users
+            - Method=POST
+          filters:
+            - RemoveRequestHeader=Cookie # 헤더값 초기화
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+
+        #그 외외
+        - id: user-service
+          uri: lb://USER-SERVICE  #eureka서버에 등록된이름 찾아간다  lb
+          predicates:
+                - Path=/user-service/**
+                - Method=GET
+          filters:
+                - RemoveRequestHeader=Cookie # 헤더값 초기화
+                - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+                - AuthorizationHeaderFilter   # 로그인 회원가입을 제외하고 나머지 요청에서 대해서는 해당필터처리
+
+        - id: user-service
+          uri: lb://USER-SERVICE  #eureka서버에 등록된이름 찾아간다  lb
+          predicates:
+            - Path=/user-service/actuator/**
+            - Method=GET,POST
+          filters:
+            - RemoveRequestHeader=Cookie # 헤더값 초기화
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+#            - AuthorizationHeaderFilter   # 로그인 회원가입을 제외하고 나머지 요청에서 대해서는 해당필터처리
+
+          #Catalog -Service
+
+        - id: catalog-service
+          uri: lb://CATALOG-SERVICE  #eureka서버에 등록된이름 찾아간다  lb
+          predicates:
+            - Path=/catalog-service/**
+
+        #ORDER-SERVICE
+        - id: order-service
+          uri: lb://ORDER-SERVICE  #eureka서버에 등록된이름 찾아간다  lb
+          predicates:
+            - Path=/order-service/actuator/**
+            - Method=GET,POST
+          filters:
+            - RemoveRequestHeader=Cookie # 헤더값 초기화
+            - RewritePath=/order-service/(?<segment>.*), /$\{segment}
+
+        - id: order-service
+          uri: lb://ORDER-SERVICE  #eureka서버에 등록된이름 찾아간다  lb
+          predicates:
+          - Path=/order-service/**
+
+        #Filter
+
+          filters:
+            - name: CustomFilter
+            - name: LoggingFilter
+              args:
+                baseMessage: HI there
+                preLogger: true
+                postLogger: true
+#            - AddRequestHeader=second-request, second-request-header24
+#            - AddResponseHeader=second-response, second-response-header2
+
+#복호화
+#token:
+#  secret : user_token
+
+
+
+# actiour 설정
+management:
+  endpoint:
+    web:
+      exposure:
+        include: refresh , health , beans , httptrace , busrefresh , info, metrics , prometheus #refresh는 post방식으로 요청(설정파일을 서버를 따로 내리지않고 요청하여 새롭게 적용시킴)
